@@ -197,18 +197,11 @@ mod tests {
     }
 
     #[test]
-    fn test_matrix_debug() {
+    fn test_a_can_not_mul_b() -> Result<()> {
         let a = Matrix::new([1, 2, 3, 4, 5, 6], 2, 3);
         let b = Matrix::new([1, 2, 3, 4], 2, 2);
         let c = multiply(&a, &b);
         assert!(c.is_err());
-    }
-
-    #[test]
-    #[should_panic]
-    fn test_a_can_not_mul_b_panic() {
-        let a = Matrix::new([1, 2, 3, 4, 5, 6], 2, 3);
-        let b = Matrix::new([1, 2, 3, 4], 2, 2);
-        let _c = a * b;
+        Ok(())
     }
 }

@@ -158,17 +158,6 @@ impl<T> Msg<T> {
     }
 }
 
-impl<T> Mul for Matrix<T>
-where
-    T: Copy + Default + Add<Output = T> + Mul<Output = T> + AddAssign + Send + 'static,
-{
-    type Output = Self;
-
-    fn mul(self, rhs: Self) -> Self::Output {
-        multiply(&self, &rhs).expect("Matrix multiply error")
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -190,25 +179,9 @@ mod tests {
     fn test_matrix_display() -> Result<()> {
         let a = Matrix::new([1, 2, 3, 4], 2, 2);
         let b = Matrix::new([1, 2, 3, 4], 2, 2);
-        let c = a * b;
+        let c = multiply(&a, &b)?;
         assert_eq!(c.data, vec![7, 10, 15, 22]);
         assert_eq!(format!("{}", c), "{7 10, 15 22}");
         Ok(())
-    }
-
-    #[test]
-    fn test_matrix_debug() {
-        let a = Matrix::new([1, 2, 3, 4, 5, 6], 2, 3);
-        let b = Matrix::new([1, 2, 3, 4], 2, 2);
-        let c = multiply(&a, &b);
-        assert!(c.is_err());
-    }
-
-    #[test]
-    #[should_panic]
-    fn test_a_can_not_mul_b_panic() {
-        let a = Matrix::new([1, 2, 3, 4, 5, 6], 2, 3);
-        let b = Matrix::new([1, 2, 3, 4], 2, 2);
-        let _c = a * b;
     }
 }

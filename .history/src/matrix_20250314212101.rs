@@ -3,8 +3,7 @@ use anyhow::{anyhow, Result};
 use std::{
     fmt,
     ops::{Add, AddAssign, Mul},
-    sync::mpsc,
-    thread,
+    sync::mpsc, thread,
 };
 
 use crate::{dot_product, Vector};
@@ -17,59 +16,42 @@ pub struct Matrix<T> {
     rows: usize,
     cols: usize,
 }
-// input to the thread
+
 pub struct MsgInput<T> {
     idx: usize,
     row: Vector<T>,
     col: Vector<T>,
 }
-// output from the thread
+
 pub struct MsgOutput<T> {
     idx: usize,
     value: T,
 }
 
-// message to the thread
 pub struct Msg<T> {
     input: MsgInput<T>,
     // sender to send the result back
     sender: oneshot::Sender<MsgOutput<T>>,
 }
 
-// 定义一个通用的矩阵乘法函数，接受任意类型T的矩阵
 pub fn multiply<T>(a: &Matrix<T>, b: &Matrix<T>) -> Result<Matrix<T>>
 where
-    T: Copy + Default + Add<Output = T> + Mul<Output = T> + AddAssign + Send + 'static,
+    T: Copy + Default + Add<Output = T> + Mul<Output = T> + AddAssign,
 {
     if a.cols != b.rows {
         return Err(anyhow!("Matrix multiply error: a.cols != b.rows"));
     }
 
-    let senders = (0..NUM_THREADS)
-        .map(|_| {
-            let (tx, rx) = mpsc::channel::<Msg<T>>();
-            thread::spawn(move || {
-                for msg in rx {
-                    let value = dot_product(msg.input.row, msg.input.col).unwrap();
-                    if let Err(e) = msg.sender.send(MsgOutput {
-                        idx: msg.input.idx,
-                        value,
-                    }) {
-                        eprintln!("Send Error: {:?}", e);
-                    }
-                }
-
-                Ok::<_, anyhow::Error>(())
-            });
-
-            tx
+    let senders = (0..NUM_THREADS).map(|_| {
+        let (tx, mut rx) = mpsc::channel();
+        thread::spawn(move || {
+            let value = dot_product(msg.input.row, msg.input.col)?;
+            msg.sender.send(MsgOutput { idx: msg.input.idx, value })?;
         })
-        .collect::<Vec<_>>();
-
+    })
     // generate 4 threads which receive msg and do not product
-    let matrix_len = a.rows * b.cols;
-    let mut data = vec![T::default(); matrix_len];
-    let mut recivers = Vec::with_capacity(matrix_len);
+
+    let mut data = Vec::with_capacity(a.rows * b.cols);
     for i in 0..a.rows {
         for j in 0..b.cols {
             let row = Vector::new(&a.data[i * a.cols..(i + 1) * a.cols]);
@@ -79,21 +61,8 @@ where
                 .copied()
                 .collect::<Vec<_>>();
             let col = Vector::new(col_data);
-            let idx = i * b.cols + j;
-            let input = MsgInput::new(idx, row, col);
-            let (tx, rx) = oneshot::channel();
-            let msg = Msg::new(input, tx);
-            if let Err(e) = senders[i % NUM_THREADS].send(msg) {
-                eprintln!("Send Error: {:?}", e);
-            }
-            recivers.push(rx);
+            data[i * b.cols + j] += dot_product(row, col)?;
         }
-    }
-
-    // map/reduce: reduce phase
-    for rx in recivers {
-        let output = rx.recv()?;
-        data[output.idx] = output.value;
     }
 
     Ok(Matrix {
@@ -146,29 +115,6 @@ where
     }
 }
 
-impl<T> MsgInput<T> {
-    pub fn new(idx: usize, row: Vector<T>, col: Vector<T>) -> Self {
-        Self { idx, row, col }
-    }
-}
-
-impl<T> Msg<T> {
-    pub fn new(input: MsgInput<T>, sender: oneshot::Sender<MsgOutput<T>>) -> Self {
-        Self { input, sender }
-    }
-}
-
-impl<T> Mul for Matrix<T>
-where
-    T: Copy + Default + Add<Output = T> + Mul<Output = T> + AddAssign + Send + 'static,
-{
-    type Output = Self;
-
-    fn mul(self, rhs: Self) -> Self::Output {
-        multiply(&self, &rhs).expect("Matrix multiply error")
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -190,25 +136,9 @@ mod tests {
     fn test_matrix_display() -> Result<()> {
         let a = Matrix::new([1, 2, 3, 4], 2, 2);
         let b = Matrix::new([1, 2, 3, 4], 2, 2);
-        let c = a * b;
+        let c = multiply(&a, &b)?;
         assert_eq!(c.data, vec![7, 10, 15, 22]);
         assert_eq!(format!("{}", c), "{7 10, 15 22}");
         Ok(())
-    }
-
-    #[test]
-    fn test_matrix_debug() {
-        let a = Matrix::new([1, 2, 3, 4, 5, 6], 2, 3);
-        let b = Matrix::new([1, 2, 3, 4], 2, 2);
-        let c = multiply(&a, &b);
-        assert!(c.is_err());
-    }
-
-    #[test]
-    #[should_panic]
-    fn test_a_can_not_mul_b_panic() {
-        let a = Matrix::new([1, 2, 3, 4, 5, 6], 2, 3);
-        let b = Matrix::new([1, 2, 3, 4], 2, 2);
-        let _c = a * b;
     }
 }
