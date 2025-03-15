@@ -3,7 +3,6 @@
 
 use std::{
     collections::HashMap,
-    fmt,
     sync::{Arc, Mutex, RwLock},
 };
 
@@ -57,8 +56,8 @@ impl Metrics {
 
 impl fmt::Display for Metrics {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let data = self.data.read().map_err(|_e| fmt::Error {})?;
-        for (key, value) in data.iter() {
+        let data = self.data.read().unwrap();
+        for (key, value) in data {
             writeln!(f, "{}: {}", key, value)?;
         }
         Ok(())
