@@ -1,4 +1,4 @@
-use crate::{process_http_serve, CmdExector};
+use crate::{process_http_serve, CmdExecutor};
 
 use super::verify_path;
 use clap::Parser;
@@ -20,7 +20,7 @@ pub struct HttpServeOpts {
     pub port: u16,
 }
 
-impl CmdExector for HttpServeOpts {
+impl CmdExecutor for HttpServeOpts {
     async fn execute(self) -> anyhow::Result<()> {
         process_http_serve(self.dir, self.port).await
     }

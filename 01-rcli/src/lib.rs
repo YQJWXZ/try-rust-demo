@@ -10,6 +10,6 @@ pub use utils::*;
 #[allow(async_fn_in_trait)]
 #[enum_dispatch]
 // #[async_trait::async_trait]
-pub trait CmdExector {
+pub trait CmdExecutor {
     async fn execute(self) -> anyhow::Result<()>;
 }
