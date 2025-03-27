@@ -28,16 +28,12 @@ pub trait CommandExceutor {
     fn execute(self, backend: &Backend) -> RespFrame;
 }
 #[enum_dispatch(CommandExceutor)]
-#[derive(Debug)]
 pub enum Command {
     Get(Get),
     Set(Set),
     HGet(HGet),
     HSet(HSet),
     HGetAll(HGetAll),
-
-    // unrecognized command
-    Unrecognized(Unrecognized),
 }
 
 #[derive(Debug)]
@@ -68,14 +64,11 @@ pub struct HGetAll {
     key: String,
 }
 
-#[derive(Debug)]
-pub struct Unrecognized;
-
 impl TryFrom<RespFrame> for Command {
     type Error = CommandError;
     fn try_from(value: RespFrame) -> Result<Self, Self::Error> {
         match value {
-            RespFrame::Array(array) => array.try_into(),
+            RespFrame::Array(ref arr) => arr::try_from(arr.clone()),
             _ => Err(CommandError::InvalidCommand("Command must be an array".to_string())),
         }
     }
@@ -92,7 +85,15 @@ impl TryFrom<RespArray> for Command {
                     b"hget" => Ok(HGet::try_from(value)?.into()),
                     b"hset" => Ok(HSet::try_from(value)?.into()),
                     b"hgetall" => Ok(HGetAll::try_from(value)?.into()),
-                    _ => Ok(Unrecognized.into()),
+                    _ =>
+                        Err(
+                            CommandError::InvalidCommand(
+                                format!(
+                                    "Invalid command: {}",
+                                    String::from_utf8_lossy(cmd.as_ref())
+                                )
+                            )
+                        ),
                 }
             _ =>
                 Err(
@@ -101,12 +102,6 @@ impl TryFrom<RespArray> for Command {
                     )
                 ),
         }
-    }
-}
-
-impl CommandExceutor for Unrecognized {
-    fn execute(self, _backend: &Backend) -> RespFrame {
-        RESP_OK.clone()
     }
 }
 

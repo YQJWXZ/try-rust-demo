@@ -68,7 +68,6 @@ pub struct HGetAll {
     key: String,
 }
 
-#[derive(Debug)]
 pub struct Unrecognized;
 
 impl TryFrom<RespFrame> for Command {
@@ -92,7 +91,15 @@ impl TryFrom<RespArray> for Command {
                     b"hget" => Ok(HGet::try_from(value)?.into()),
                     b"hset" => Ok(HSet::try_from(value)?.into()),
                     b"hgetall" => Ok(HGetAll::try_from(value)?.into()),
-                    _ => Ok(Unrecognized.into()),
+                    _ =>
+                        Err(
+                            CommandError::InvalidCommand(
+                                format!(
+                                    "Invalid command: {}",
+                                    String::from_utf8_lossy(cmd.as_ref())
+                                )
+                            )
+                        ),
                 }
             _ =>
                 Err(
@@ -101,12 +108,6 @@ impl TryFrom<RespArray> for Command {
                     )
                 ),
         }
-    }
-}
-
-impl CommandExceutor for Unrecognized {
-    fn execute(self, _backend: &Backend) -> RespFrame {
-        RESP_OK.clone()
     }
 }
 

@@ -1,5 +1,5 @@
 use anyhow::Result;
-use simple_redis::{ network, Backend };
+use simple_redis::network;
 use tokio::net::TcpListener;
 use tracing::{ info, warn };
 
@@ -11,16 +11,14 @@ async fn main() -> Result<()> {
     info!("Simple Redis server listening on {}", addr);
     let listener = TcpListener::bind(addr).await?;
 
-    let backend = Backend::new();
     loop {
         let (stream, raddr) = listener.accept().await?;
         info!("Accepted connection from {}", raddr);
-        let cloned_backend = backend.clone();
         tokio::spawn(async move {
-            match network::stream_handler(stream, cloned_backend).await {
-                Ok(_) => info!("Connection from {} exited", raddr),
-                Err(e) => warn!("Connection from {} closed with error: {}", raddr, e),
+            if let Err(e) = network::stream_handler(stream).await {
+                warn!("")
             }
         });
     }
+    Ok(())
 }

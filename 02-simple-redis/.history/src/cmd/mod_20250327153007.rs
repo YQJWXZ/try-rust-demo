@@ -68,7 +68,6 @@ pub struct HGetAll {
     key: String,
 }
 
-#[derive(Debug)]
 pub struct Unrecognized;
 
 impl TryFrom<RespFrame> for Command {
@@ -101,12 +100,6 @@ impl TryFrom<RespArray> for Command {
                     )
                 ),
         }
-    }
-}
-
-impl CommandExceutor for Unrecognized {
-    fn execute(self, _backend: &Backend) -> RespFrame {
-        RESP_OK.clone()
     }
 }
 

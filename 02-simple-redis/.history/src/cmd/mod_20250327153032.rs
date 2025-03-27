@@ -104,12 +104,6 @@ impl TryFrom<RespArray> for Command {
     }
 }
 
-impl CommandExceutor for Unrecognized {
-    fn execute(self, _backend: &Backend) -> RespFrame {
-        RESP_OK.clone()
-    }
-}
-
 /**
  * validate command format is focused exactly
  */

@@ -17,9 +17,8 @@ async fn main() -> Result<()> {
         info!("Accepted connection from {}", raddr);
         let cloned_backend = backend.clone();
         tokio::spawn(async move {
-            match network::stream_handler(stream, cloned_backend).await {
-                Ok(_) => info!("Connection from {} exited", raddr),
-                Err(e) => warn!("Connection from {} closed with error: {}", raddr, e),
+            if let Err(e) = network::stream_handler(stream).await {
+                warn!("handle error for {}: {:?}", raddr, e);
             }
         });
     }
