@@ -68,6 +68,12 @@ impl BulkString {
     }
 }
 
+impl From<String> for BulkString {
+    fn from(value: String) -> Self {
+        BulkString(value.into_bytes())
+    }
+}
+
 impl From<&str> for BulkString {
     fn from(value: &str) -> Self {
         BulkString(value.as_bytes().to_vec())

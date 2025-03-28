@@ -1,16 +1,6 @@
-use crate::{ cmd::CommandError, RespMap };
+use crate::{ cmd::CommandError, BulkString, RespArray, RespFrame };
 
-use super::{
-    extract_args,
-    validate_command,
-    CommandExceutor,
-    HGet,
-    HGetAll,
-    HSet,
-    RespArray,
-    RespFrame,
-    RESP_OK,
-};
+use super::{ extract_args, validate_command, CommandExceutor, HGet, HGetAll, HSet, RESP_OK };
 
 impl CommandExceutor for HGet {
     fn execute(self, backend: &crate::Backend) -> RespFrame {
@@ -33,12 +23,21 @@ impl CommandExceutor for HGetAll {
         let hmap = backend.hmap.get(&self.key);
         match hmap {
             Some(hmap) => {
-                let mut map = RespMap::new();
+                let mut data = Vec::with_capacity(hmap.len());
                 for v in hmap.iter() {
                     let key = v.key().to_owned();
-                    map.insert(key, v.value().clone());
+                    data.push((key, v.value().clone()));
                 }
-                map.into()
+
+                if self.sort {
+                    data.sort_by(|a, b| a.0.cmp(&b.0));
+                }
+
+                let ret = data
+                    .into_iter()
+                    .flat_map(|(k, v)| vec![BulkString::from(k).into(), v])
+                    .collect::<Vec<RespFrame>>();
+                RespArray::new(ret).into()
             }
             None => RespArray::new([]).into(),
         }
@@ -95,6 +94,7 @@ impl TryFrom<RespArray> for HGetAll {
             Some(RespFrame::BulkString(key)) =>
                 Ok(HGetAll {
                     key: String::from_utf8(key.0)?,
+                    sort: false,
                 }),
 
             _ => Err(CommandError::InvalidArgument("Invalid key".to_string())),
@@ -151,8 +151,8 @@ mod tests {
 
     #[test]
     fn test_hset_hget_hgetall_commands() -> Result<()> {
-        // Test HSet
         let backend = crate::Backend::new();
+        // Test HSet
         let cmd = HSet {
             key: "map".to_string(),
             field: "hello".to_string(),
@@ -161,13 +161,7 @@ mod tests {
         let result = cmd.execute(&backend);
         assert_eq!(result, RESP_OK.clone());
 
-        // HSet, Then Test HGet and HGetAll
-        let cmd = HSet {
-            key: "map".to_string(),
-            field: "hello".to_string(),
-            val: RespFrame::BulkString(b"world".into()),
-        };
-        cmd.execute(&backend);
+        // Test HGet
         let cmd = HGet {
             key: "map".to_string(),
             field: "hello".to_string(),
@@ -175,13 +169,24 @@ mod tests {
         let result = cmd.execute(&backend);
         assert_eq!(result, RespFrame::BulkString(b"world".into()));
 
+        // HSet, Then HGetAll
+        let cmd = HSet {
+            key: "map".to_string(),
+            field: "hello1".to_string(),
+            val: RespFrame::BulkString(b"world1".into()),
+        };
+        cmd.execute(&backend);
         let cmd = HGetAll {
             key: "map".to_string(),
+            sort: true,
         };
         let result = cmd.execute(&backend);
-        let mut expected = RespMap::new();
-        expected.insert("hello".to_string(), RespFrame::BulkString(b"world".into()));
-
+        let expected = RespArray::new([
+            BulkString::from("hello").into(),
+            BulkString::from("world").into(),
+            BulkString::from("hello1").into(),
+            BulkString::from("world1").into(),
+        ]);
         assert_eq!(result, expected.into());
 
         Ok(())
