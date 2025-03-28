@@ -16,6 +16,7 @@
     - map: "%<number-of-entries>\r\n<key-1><value-1>...<key-n><value-n>"
     - set: "~<number-of-elements>\r\n<element-1>...<element-n>"
 */
+mod decode;
 
 mod simple_string;
 mod simple_error;
@@ -30,19 +31,10 @@ mod set;
 mod frame;
 
 use anyhow::Result;
-use bytes::{ Buf, BytesMut };
+use bytes::BytesMut;
 use enum_dispatch::enum_dispatch;
+
 use thiserror::Error;
-pub use self::{
-    array::{ RespArray, RespNullArray },
-    bulk_string::{ BulkString, RespNullBulkString },
-    frame::RespFrame,
-    map::RespMap,
-    null::RespNull,
-    set::RespSet,
-    simple_error::SimpleError,
-    simple_string::SimpleString,
-};
 
 const BUF_CAP: usize = 4096;
 const CRLF: &[u8] = b"\r\n";
@@ -170,24 +162,5 @@ fn calc_total_length(buf: &[u8], end: usize, len: usize, prefix: &str) -> Result
             Ok(total_len)
         }
         _ => Ok(len + CRLF_LEN),
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use anyhow::Result;
-    #[test]
-    fn test_calc_array_length() -> Result<()> {
-        let buf = b"*2\r\n$3\r\nset\r\n$5\r\nhello\r\n";
-        let (end, len) = parse_length(buf, "*")?;
-        let total_len = calc_total_length(buf, end, len, "*")?;
-        assert_eq!(total_len, buf.len());
-
-        let buf = b"*2\r\n$3\r\nset\r\n";
-        let (end, len) = parse_length(buf, "*")?;
-        let ret = calc_total_length(buf, end, len, "*");
-        assert_eq!(ret.unwrap_err(), RespError::NotComplete);
-        Ok(())
     }
 }

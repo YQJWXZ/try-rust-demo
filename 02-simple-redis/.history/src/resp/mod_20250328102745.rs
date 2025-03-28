@@ -16,6 +16,7 @@
     - map: "%<number-of-entries>\r\n<key-1><value-1>...<key-n><value-n>"
     - set: "~<number-of-elements>\r\n<element-1>...<element-n>"
 */
+mod decode;
 
 mod simple_string;
 mod simple_error;
@@ -30,19 +31,12 @@ mod set;
 mod frame;
 
 use anyhow::Result;
-use bytes::{ Buf, BytesMut };
+use bytes::BytesMut;
 use enum_dispatch::enum_dispatch;
+
+use frame::RespFrame;
+use simple_string::SimpleString;
 use thiserror::Error;
-pub use self::{
-    array::{ RespArray, RespNullArray },
-    bulk_string::{ BulkString, RespNullBulkString },
-    frame::RespFrame,
-    map::RespMap,
-    null::RespNull,
-    set::RespSet,
-    simple_error::SimpleError,
-    simple_string::SimpleString,
-};
 
 const BUF_CAP: usize = 4096;
 const CRLF: &[u8] = b"\r\n";

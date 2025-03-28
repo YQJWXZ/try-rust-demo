@@ -32,6 +32,9 @@ mod frame;
 use anyhow::Result;
 use bytes::{ Buf, BytesMut };
 use enum_dispatch::enum_dispatch;
+
+use frame::RespFrame;
+use simple_string::SimpleString;
 use thiserror::Error;
 pub use self::{
     array::{ RespArray, RespNullArray },
