@@ -38,13 +38,13 @@ async fn main() -> anyhow::Result<()> {
         .with_filter(LevelFilter::INFO);
 
     // opentelemetry tracing layer for tracing-subscriber
-    // let tracer = init_tracer()?;
-    // let opentelemetry = tracing_opentelemetry::layer().with_tracer(tracer);
+    let tracer = init_tracer()?;
+    let opentelemetry = tracing_opentelemetry::layer().with_tracer(tracer);
 
     tracing_subscriber::registry()
         .with(console)
         .with(file)
-        // .with(opentelemetry)
+        .with(opentelemetry)
         .init();
 
     let addr = "0.0.0.0:8080";
