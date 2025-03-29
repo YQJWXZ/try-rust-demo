@@ -44,7 +44,7 @@ async fn main() -> anyhow::Result<()> {
     tracing_subscriber::registry()
         .with(console)
         .with(file)
-        .with(opentelemetry)
+        // .with(opentelemetry)
         .init();
 
     let addr = "0.0.0.0:8080";

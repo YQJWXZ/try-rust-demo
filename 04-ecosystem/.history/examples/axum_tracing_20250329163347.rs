@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use axum::{extract::Request, routing::get, Router};
 use opentelemetry::KeyValue;
-use opentelemetry_otlp::WithExportConfig;
+use opentelemetry_otlp::{Protocol, WithExportConfig};
 use opentelemetry_sdk::{
     runtime,
     trace::{self, RandomIdGenerator, Tracer},
@@ -18,7 +18,7 @@ use tracing_subscriber::{
     fmt::{self, format::FmtSpan},
     layer::SubscriberExt,
     util::SubscriberInitExt,
-    Layer,
+    Layer, Registry,
 };
 
 #[tokio::main]
@@ -39,12 +39,13 @@ async fn main() -> anyhow::Result<()> {
 
     // opentelemetry tracing layer for tracing-subscriber
     let tracer = init_tracer()?;
-    let opentelemetry = tracing_opentelemetry::layer().with_tracer(tracer);
+    let opentelemetry =
+        Registry::default().with(tracing_opentelemetry::layer().with_tracer(tracer));
 
     tracing_subscriber::registry()
         .with(console)
         .with(file)
-        .with(opentelemetry)
+        // .with(opentelemetry)
         .init();
 
     let addr = "0.0.0.0:8080";
@@ -96,23 +97,11 @@ async fn task3() {
 }
 
 fn init_tracer() -> anyhow::Result<Tracer> {
-    let tracer = opentelemetry_otlp::new_pipeline()
-        .tracing()
-        .with_exporter(
-            opentelemetry_otlp::new_exporter()
-                .tonic()
-                .with_endpoint("http://localhost:4317"),
-        )
-        .with_trace_config(
-            trace::config()
-                .with_id_generator(RandomIdGenerator::default())
-                .with_max_events_per_span(32)
-                .with_max_attributes_per_span(64)
-                .with_resource(Resource::new(vec![KeyValue::new(
-                    "service.name",
-                    "axum-tracing",
-                )])),
-        )
-        .install_batch(runtime::Tokio)?;
-    Ok(tracer)
+    let tracer = opentelemetry_otlp::MetricExporter::builder()
+        .with_http()
+        .with_protocol(Protocol::HttpBinary)
+        .with_endpoint("http://localhost:4317")
+        .with_trace_exporter()
+        .with_resource(Resource::new(vec![KeyValue::new("service.name", "axum-tracing")]))
+        
 }

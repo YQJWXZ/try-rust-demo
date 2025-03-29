@@ -18,7 +18,7 @@ use tracing_subscriber::{
     fmt::{self, format::FmtSpan},
     layer::SubscriberExt,
     util::SubscriberInitExt,
-    Layer,
+    Layer, Registry,
 };
 
 #[tokio::main]
@@ -39,12 +39,13 @@ async fn main() -> anyhow::Result<()> {
 
     // opentelemetry tracing layer for tracing-subscriber
     let tracer = init_tracer()?;
-    let opentelemetry = tracing_opentelemetry::layer().with_tracer(tracer);
+    let opentelemetry =
+        Registry::default().with(tracing_opentelemetry::layer().with_tracer(tracer));
 
     tracing_subscriber::registry()
         .with(console)
         .with(file)
-        .with(opentelemetry)
+        // .with(opentelemetry)
         .init();
 
     let addr = "0.0.0.0:8080";
